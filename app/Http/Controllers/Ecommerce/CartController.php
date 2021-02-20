@@ -13,6 +13,8 @@ use App\Order;
 use App\OrderDetail;
 use Illuminate\Support\Str;
 use DB;
+use App\Mail\CustomerRegisterMail;
+use Mail;
 
 class CartController extends Controller
 {
@@ -158,13 +160,16 @@ class CartController extends Controller
                 return $q['qty'] * $q['product_price'];
             });
 
+            $password = Str::random(8); 
             //SIMPAN DATA CUSTOMER BARU
             $customer = Customer::create([
                 'name' => $request->customer_name,
                 'email' => $request->email,
+                'password' => $password,
                 'phone_number' => $request->customer_phone,
                 'address' => $request->customer_address,
                 'district_id' => $request->district_id,
+                'activate_token' => Str::random(30),
                 'status' => false
             ]);
 
@@ -200,6 +205,7 @@ class CartController extends Controller
             //KOSONGKAN DATA KERANJANG DI COOKIE
             $cookie = cookie('dw-carts', json_encode($carts), 2880);
             //REDIRECT KE HALAMAN FINISH TRANSAKSI
+            Mail::to($request->email)->send(new CustomerRegisterMail($customer, $password)); //TAMBAHKAN CODE INI SAJA 
             return redirect(route('front.finish_checkout', $order->invoice))->cookie($cookie);
         } catch (\Exception $e) {
             //JIKA TERJADI ERROR, MAKA ROLLBACK DATANYA
@@ -216,4 +222,7 @@ class CartController extends Controller
         //LOAD VIEW checkout_finish.blade.php DAN PASSING DATA ORDER
         return view('ecommerce.checkout_finish', compact('order'));
     }
+
+
+
 }
